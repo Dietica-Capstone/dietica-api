@@ -43,22 +43,37 @@ app.get("/users/:email", (req, res) => {
     response(200, fields, `Specific data by email '${email}'`, res);
   });
 });
-
 app.post("/register", (req, res) => {
   const { name, email, password, birthdate, sex, height, weight } = req.body;
-  const sql = `INSERT INTO profiler (name, email, password, birthdate, sex, height, weight) VALUES ('${name}', '${email}', '${password}', '${birthdate}', '${sex}', ${height}, ${weight})`;
 
-  db.query(sql, (err, fields) => {
-    if (err) response(500, "invalid", "error", res);
-    if (fields?.affectedRows) {
-      const data = {
-        isSuccess: fields.affectedRows,
-        email: fields.email,
-      };
-      response(200, data, "Data Added Successfuly", res);
+  // Query untuk memeriksa apakah email sudah ada
+  const checkEmailSql = `SELECT email FROM profiler WHERE email = '${email}'`;
+
+  db.query(checkEmailSql, (err, results) => {
+    if (err) return response(500, "Invalid", "Error checking email", res);
+
+    // Jika email sudah ada di database
+    if (results.length > 0) {
+      return response(400, "Email already in use", "Error", res);
     }
+
+    // Jika email belum ada, lanjutkan ke proses INSERT
+    const insertSql = `INSERT INTO profiler (name, email, password, birthdate, sex, height, weight) VALUES ('${name}', '${email}', '${password}', '${birthdate}', '${sex}', ${height}, ${weight})`;
+
+    db.query(insertSql, (err, fields) => {
+      if (err) return response(500, "Invalid", "Error inserting data", res);
+
+      if (fields?.affectedRows) {
+        const data = {
+          isSuccess: fields.affectedRows,
+          email,
+        };
+        response(200, data, "Data Added Successfully", res);
+      }
+    });
   });
 });
+
 
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
